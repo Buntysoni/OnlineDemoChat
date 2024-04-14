@@ -1,0 +1,125 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+<div id="CUProfile" class="d-none">
+    <label>Current user: <b id="cUser"></b></label>
+    <hr />
+</div>
+<button onclick="startChats(false)" id="startchat" style="display: block;">Start Chat</button>
+<button onclick="endChats()" id="endchat" style="display: none;">End Chat</button>
+
+<select id="usersList"></select>
+<input type="text" id="messageInput" placeholder="Type a message">
+<button onclick="sendMessage(false)">Send</button>
+<button onclick="sendMessage(true)">Send All</button>
+
+<ul id="messageList"></ul>
+
+<b>Active Users</b>
+<ul id="activeUserList"></ul>
+
+<script>
+    var startchat = document.getElementById("startchat");
+    var endchat = document.getElementById("endchat");
+    const activeUserList = document.getElementById('activeUserList');
+    var CurAss = false;
+
+    var socket;
+
+    function startChats() {
+        debugger;
+        socket = new WebSocket('wss://' + location.host + '/ws');
+
+        socket.onopen = () => {
+            console.log('WebSocket connection established');
+        };
+
+        socket.onmessage = (event) => {
+            if(!CurAss){
+                $("#cUser").html(event.data.replace('user ','').replace(' is joined!', ''));
+                $("#CUProfile").removeClass("d-none");
+                CurAss = true;
+            }
+            const message = event.data;
+            const messageList = document.getElementById('messageList');
+            const li = document.createElement('li');
+            li.innerHTML = message;
+            messageList.appendChild(li);
+
+            if(event.data.indexOf('joined') > 0 || event.data.indexOf('left')){
+                GetActiveUsers();
+            }
+        };
+        startchat.style.display = "none";
+        endchat.style.display = "block";
+    }
+
+    endchat.onclick = function () {
+        var data = {
+                    message: "",
+                    isAll: true,
+                    ParticularUser: ""
+                };
+            socket.close(1000,JSON.stringify(data));
+            startchat.style.display = "block";
+        endchat.style.display = "none";
+        };
+
+    function sendMessage(all) {
+        const messageInput = document.getElementById('messageInput');
+        const message = messageInput.value.trim();
+        if (socket && message) {
+            var data = {
+                    message: message,
+                    isAll: all,
+                    ParticularUser: $("#usersList").val(),
+                    CurrenctUserId: $("#cUser").text()
+                };
+            socket.send(JSON.stringify(data));
+            messageInput.value = '';
+        }
+    }
+
+    function GetActiveUsers(){
+         fetch('/home/GetActiveUsers')
+            .then(response => response.json())
+            .then(data => {
+                $("#activeUserList").html('');
+                $("#usersList").html('');
+                $("#usersList").append("<option value='0'>--Select User--</option>");
+                data.forEach(user => {
+                    const li = document.createElement('li');
+                    li.textContent = user.userId;
+                    activeUserList.appendChild(li);
+                    $("#usersList").append("<option value='" + user.userId + "'>" + user.userId + "</option>");
+                });
+            })
+            .catch(error => {
+                console.error('Error fetching active users:', error);
+            });
+    }
+
+    //Request for Notification
+    //    if (!("Notification" in window)) {
+    //    console.log("This browser does not support desktop notification");
+    //} else if (Notification.permission !== "denied") {
+    //    Notification.requestPermission().then(function (permission) {
+    //        if (permission === "granted") {
+    //            console.log("Notification permission granted");
+    //        }
+    //    });
+
+     //Send Notification
+     //var options = {
+     //    body: "unlein",
+     //    icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSvAUUR3Z0aaZ1cWvFsrOt6uJRrDwOnYPinX94O9ofqPQ&s', // Path to the logo image
+     //    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSvAUUR3Z0aaZ1cWvFsrOt6uJRrDwOnYPinX94O9ofqPQ&s", // Path to the image received from the server
+     //};
+
+     //var notification = new Notification("unlein", options);
+     //notification.onclick = function(event) {
+     //    event.preventDefault();
+     //    window.open("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSvAUUR3Z0aaZ1cWvFsrOt6uJRrDwOnYPinX94O9ofqPQ&s");
+     //};
+    //}
+</script>
