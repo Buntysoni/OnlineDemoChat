@@ -24,6 +24,26 @@
     const activeUserList = document.getElementById('activeUserList');
     var CurAss = false;
 
+    //Request for Notification
+    if (!("Notification" in window)) {
+        console.log("This browser does not support desktop notification");
+    } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(function (permission) {
+            if (permission === "granted") {
+                console.log("Notification permission granted");
+            }
+        });
+    }
+    // $(document).ready(function () {
+    //     $(document).on("visibilitychange", function () {
+    //         if (document.visibilityState === 'visible') {
+    //             console.log('Tab/Window is focused');
+    //         } else {
+    //             //SendNotification();
+    //         }
+    //     });
+    // });
+
     var socket;
 
     function startChats() {
@@ -35,8 +55,8 @@
         };
 
         socket.onmessage = (event) => {
-            if(!CurAss){
-                $("#cUser").html(event.data.replace('user ','').replace(' is joined!', ''));
+            if (!CurAss) {
+                $("#cUser").html(event.data.replace('user ', '').replace(' is joined!', ''));
                 $("#CUProfile").removeClass("d-none");
                 CurAss = true;
             }
@@ -46,8 +66,12 @@
             li.innerHTML = message;
             messageList.appendChild(li);
 
-            if(event.data.indexOf('joined') > 0 || event.data.indexOf('left')){
+            if (event.data.indexOf('joined') > 0 || event.data.indexOf('left')) {
                 GetActiveUsers();
+            }
+
+            if (!$(document).is(':visible')) {
+                SendNotification(event.data);
             }
         };
         startchat.style.display = "none";
@@ -56,32 +80,32 @@
 
     endchat.onclick = function () {
         var data = {
-                    message: "",
-                    isAll: true,
-                    ParticularUser: ""
-                };
-            socket.close(1000,JSON.stringify(data));
-            startchat.style.display = "block";
-        endchat.style.display = "none";
+            message: "",
+            isAll: true,
+            ParticularUser: ""
         };
+        socket.close(1000, JSON.stringify(data));
+        startchat.style.display = "block";
+        endchat.style.display = "none";
+    };
 
     function sendMessage(all) {
         const messageInput = document.getElementById('messageInput');
         const message = messageInput.value.trim();
         if (socket && message) {
             var data = {
-                    message: message,
-                    isAll: all,
-                    ParticularUser: $("#usersList").val(),
-                    CurrenctUserId: $("#cUser").text()
-                };
+                message: message,
+                isAll: all,
+                ParticularUser: $("#usersList").val(),
+                CurrenctUserId: $("#cUser").text()
+            };
             socket.send(JSON.stringify(data));
             messageInput.value = '';
         }
     }
 
-    function GetActiveUsers(){
-         fetch('/home/GetActiveUsers')
+    function GetActiveUsers() {
+        fetch('/home/GetActiveUsers')
             .then(response => response.json())
             .then(data => {
                 $("#activeUserList").html('');
@@ -99,27 +123,17 @@
             });
     }
 
-    //Request for Notification
-    //    if (!("Notification" in window)) {
-    //    console.log("This browser does not support desktop notification");
-    //} else if (Notification.permission !== "denied") {
-    //    Notification.requestPermission().then(function (permission) {
-    //        if (permission === "granted") {
-    //            console.log("Notification permission granted");
-    //        }
-    //    });
+    function SendNotification(msg) {
+        var options = {
+            body: msg,
+            icon: 'https://static-00.iconduck.com/assets.00/user-avatar-happy-icon-2048x2048-ssmbv1ou.png', // Path to the logo image
+            image: "https://static.vecteezy.com/system/resources/previews/010/008/086/non_2x/background-dimension-3d-graphic-message-board-for-text-and-message-design-line-shadow-for-modern-web-design-free-vector.jpg", // Path to the image received from the server
+        };
 
-     //Send Notification
-     //var options = {
-     //    body: "unlein",
-     //    icon: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSvAUUR3Z0aaZ1cWvFsrOt6uJRrDwOnYPinX94O9ofqPQ&s', // Path to the logo image
-     //    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSvAUUR3Z0aaZ1cWvFsrOt6uJRrDwOnYPinX94O9ofqPQ&s", // Path to the image received from the server
-     //};
-
-     //var notification = new Notification("unlein", options);
-     //notification.onclick = function(event) {
-     //    event.preventDefault();
-     //    window.open("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSvAUUR3Z0aaZ1cWvFsrOt6uJRrDwOnYPinX94O9ofqPQ&s");
-     //};
-    //}
+        var notification = new Notification(msg, options);
+        notification.onclick = function (event) {
+            event.preventDefault();
+            window.open("https://static.vecteezy.com/system/resources/previews/010/008/086/non_2x/background-dimension-3d-graphic-message-board-for-text-and-message-design-line-shadow-for-modern-web-design-free-vector.jpg");
+        };
+    }
 </script>
