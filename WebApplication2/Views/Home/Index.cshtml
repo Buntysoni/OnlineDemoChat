@@ -1,139 +1,240 @@
 ﻿@{
     ViewData["Title"] = "Home Page";
 }
-<div id="CUProfile" class="d-none">
-    <label>Current user: <b id="cUser"></b></label>
-    <hr />
+<style>
+    .message-card {
+        border: 1px solid #ced4da;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        padding: 10px;
+        background-color: #f8f9fa;
+    }
+
+        .message-card p {
+            margin: 0;
+        }
+
+    .message-sender {
+        text-align: right;
+        color: #6c757d;
+        font-size: 0.8rem;
+    }
+
+    .active-users {
+        border: 1px solid #ced4da;
+        border-radius: 5px;
+        padding: 10px;
+        background-color: #f8f9fa;
+    }
+
+        .active-users h5 {
+            margin-bottom: 10px;
+            color: #495057;
+        }
+
+        .active-users .list-group {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .active-users .list-group-item {
+            border: none;
+            background-color: transparent;
+            padding: 5px 0;
+            border-radius: 0;
+            border-bottom: 1px solid #ced4da;
+        }
+
+            .active-users .list-group-item:last-child {
+                border-bottom: none;
+            }
+
+            .active-users .list-group-item:hover {
+                background-color: #e9ecef;
+            }
+</style>
+
+<div class="container mt-5">
+    <div id="CUProfile">
+        <label>Current user: <b id="cUser"></b></label>
+        <hr />
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <button onclick="startChats(false)" id="startchat" class="btn btn-primary">Start Chat</button>
+            <button onclick="startChats(true)" id="rejoinchat" class="btn btn-warning d-none">Rejoin Chat</button>
+            <button onclick="endChats()" id="endchat" class="btn btn-danger d-none">End Chat</button>
+            <select id="usersList" class="form-select mt-3"></select>
+            <input type="text" id="messageInput" class="form-control mt-3" placeholder="Type a message">
+            <button onclick="sendMessage(false)" class="btn btn-primary mt-3">Send</button>
+            <button onclick="sendMessage(true)" class="btn btn-success mt-3">Send All</button>
+            <ul id="messageList" class="list-group mt-3"></ul>
+        </div>
+        <div class="col-md-6">
+            <div class="active-users">
+                <h5 class="mb-3">Active Users</h5>
+                <ul id="activeUserList" class="list-group"></ul>
+            </div>
+        </div>
+    </div>
 </div>
-<button onclick="startChats(false)" id="startchat" style="display: block;">Start Chat</button>
-<button onclick="endChats()" id="endchat" style="display: none;">End Chat</button>
 
-<select id="usersList"></select>
-<input type="text" id="messageInput" placeholder="Type a message">
-<button onclick="sendMessage(false)">Send</button>
-<button onclick="sendMessage(true)">Send All</button>
-
-<ul id="messageList"></ul>
-
-<b>Active Users</b>
-<ul id="activeUserList"></ul>
 
 <script>
     var startchat = document.getElementById("startchat");
+    var rejoinchat = document.getElementById("rejoinchat");
     var endchat = document.getElementById("endchat");
     const activeUserList = document.getElementById('activeUserList');
     var CurAss = false;
 
     //Request for Notification
     if (!("Notification" in window)) {
-        console.log("This browser does not support desktop notification");
+                console.log("This browser does not support desktop notification");
     } else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then(function (permission) {
-            if (permission === "granted") {
-                console.log("Notification permission granted");
-            }
-        });
+                Notification.requestPermission().then(function (permission) {
+                    if (permission === "granted") {
+                        console.log("Notification permission granted");
+                    }
+                });
     }
-    // $(document).ready(function () {
-    //     $(document).on("visibilitychange", function () {
-    //         if (document.visibilityState === 'visible') {
-    //             console.log('Tab/Window is focused');
-    //         } else {
-    //             //SendNotification();
-    //         }
-    //     });
-    // });
 
     var socket;
 
-    function startChats() {
+    function startChats(rejoin) {
         debugger;
-        socket = new WebSocket('wss://' + location.host + '/ws');
+                socket = new WebSocket('wss://' + location.host + '/ws?isRejoin='+rejoin+'&existingId='+$("#cUser").text()+'');
+                socket.onopen = () => {
+                    console.log('WebSocket connection established');
+                    if(rejoin){
+                        CurAss = false;
+                        rejoinchat.classList.add("d-none");
+                        var data = {
+                    message: "",
+                    isAll: true,
+                    ParticularUser: "",
+                    isRejoin: true,
+                    existingId: $("#cUser").text()
+                };
+                        socket.send(JSON.stringify(data));
+                    }
+                };
 
-        socket.onopen = () => {
-            console.log('WebSocket connection established');
-        };
+                socket.onmessage = (event) => {
+                    debugger;
+                    if (!CurAss) {
+                        if(rejoin){
+                            $("#cUser").html(event.data.split(':')[0].replace('User Rejoined ',''));
+                        } else {
+                            $("#cUser").html(event.data.replace('user ', '').replace(' is joined!', ''));
+                        }
+                        $("#CUProfile").removeClass("d-none");
+                        CurAss = true;
+                    }
+                    const message = event.data;
 
-        socket.onmessage = (event) => {
-            if (!CurAss) {
-                $("#cUser").html(event.data.replace('user ', '').replace(' is joined!', ''));
-                $("#CUProfile").removeClass("d-none");
-                CurAss = true;
-            }
-            const message = event.data;
-            const messageList = document.getElementById('messageList');
-            const li = document.createElement('li');
-            li.innerHTML = message;
-            messageList.appendChild(li);
+                    if (event.data.indexOf('joined') > 0 || event.data.indexOf('left') > 0) {
+                        GetActiveUsers();
+                    }
 
-            if (event.data.indexOf('joined') > 0 || event.data.indexOf('left')) {
-                GetActiveUsers();
-            }
+                    //if (!$(document).is(':visible')) {
+                    //    SendNotification(event.data);
+                    //}
 
-            if (!$(document).is(':visible')) {
-                SendNotification(event.data);
-            }
-        };
-        startchat.style.display = "none";
-        endchat.style.display = "block";
+                    var SeperateData = message.split(':');
+                    appendMessage(SeperateData[2],SeperateData[0],SeperateData[1]);
+                };
+                startchat.classList.add("d-none");
+                rejoinchat.classList.add("d-none");
+                endchat.classList.remove("d-none");
     }
 
     endchat.onclick = function () {
-        var data = {
-            message: "",
-            isAll: true,
-            ParticularUser: ""
-        };
-        socket.close(1000, JSON.stringify(data));
-        startchat.style.display = "block";
-        endchat.style.display = "none";
+                var data = {
+                    message: "",
+                    isAll: true,
+                    ParticularUser: ""
+                };
+                socket.close(1000, JSON.stringify(data));
+                startchat.classList.remove("d-none");
+                rejoinchat.classList.remove("d-none");
+                endchat.classList.add("d-none");
+                setTimeout(function(){
+                    GetActiveUsers();
+                }, 100);
+                $("#CUProfile").addClass("d-none");
     };
 
     function sendMessage(all) {
-        const messageInput = document.getElementById('messageInput');
-        const message = messageInput.value.trim();
-        if (socket && message) {
-            var data = {
-                message: message,
-                isAll: all,
-                ParticularUser: $("#usersList").val(),
-                CurrenctUserId: $("#cUser").text()
-            };
-            socket.send(JSON.stringify(data));
-            messageInput.value = '';
-        }
+                const messageInput = document.getElementById('messageInput');
+                const message = messageInput.value.trim();
+                if (socket && message) {
+                    var data = {
+                        message: message,
+                        isAll: all,
+                        ParticularUser: $("#usersList").val(),
+                        CurrenctUserId: $("#cUser").text()
+                    };
+                    socket.send(JSON.stringify(data));
+                    messageInput.value = '';
+                }
     }
 
     function GetActiveUsers() {
-        fetch('/home/GetActiveUsers')
-            .then(response => response.json())
-            .then(data => {
-                $("#activeUserList").html('');
-                $("#usersList").html('');
-                $("#usersList").append("<option value='0'>--Select User--</option>");
-                data.forEach(user => {
-                    const li = document.createElement('li');
-                    li.textContent = user.userId;
-                    activeUserList.appendChild(li);
-                    $("#usersList").append("<option value='" + user.userId + "'>" + user.userId + "</option>");
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching active users:', error);
-            });
+                fetch('/home/GetActiveUsers')
+                    .then(response => response.json())
+                    .then(data => {
+                        $("#activeUserList").html('');
+                        $("#usersList").html('');
+                        $("#usersList").append("<option value='0'>--Select User--</option>");
+                        data.forEach(user => {
+                            const li = document.createElement('li');
+                            li.textContent = user.userId;
+                            activeUserList.appendChild(li);
+                            $("#usersList").append("<option value='" + user.userId + "'>" + user.userId + "</option>");
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error fetching active users:', error);
+                    });
     }
 
     function SendNotification(msg) {
-        var options = {
-            body: msg,
-            icon: 'https://static-00.iconduck.com/assets.00/user-avatar-happy-icon-2048x2048-ssmbv1ou.png', // Path to the logo image
-            image: "https://static.vecteezy.com/system/resources/previews/010/008/086/non_2x/background-dimension-3d-graphic-message-board-for-text-and-message-design-line-shadow-for-modern-web-design-free-vector.jpg", // Path to the image received from the server
-        };
+                var options = {
+                    body: msg,
+                    icon: 'https://static-00.iconduck.com/assets.00/user-avatar-happy-icon-2048x2048-ssmbv1ou.png', // Path to the logo image
+                    image: "https://static.vecteezy.com/system/resources/previews/010/008/086/non_2x/background-dimension-3d-graphic-message-board-for-text-and-message-design-line-shadow-for-modern-web-design-free-vector.jpg", // Path to the image received from the server
+                };
 
-        var notification = new Notification(msg, options);
-        notification.onclick = function (event) {
-            event.preventDefault();
-            window.open("https://static.vecteezy.com/system/resources/previews/010/008/086/non_2x/background-dimension-3d-graphic-message-board-for-text-and-message-design-line-shadow-for-modern-web-design-free-vector.jpg");
-        };
+                var notification = new Notification(msg, options);
+                notification.onclick = function (event) {
+                    event.preventDefault();
+                    window.open("https://static.vecteezy.com/system/resources/previews/010/008/086/non_2x/background-dimension-3d-graphic-message-board-for-text-and-message-design-line-shadow-for-modern-web-design-free-vector.jpg");
+                };
     }
+
+    function appendMessage(message, sender, time) {
+        debugger;
+        const messageList = document.getElementById('messageList');
+        const card = document.createElement('div');
+        card.classList.add('message-card');
+
+        const messageText = document.createElement('p');
+        messageText.textContent = message;
+
+        const senderInfo = document.createElement('p');
+        senderInfo.classList.add('message-sender');
+        senderInfo.textContent = sender;
+
+        if(time){
+            const timeInfo = document.createElement('span');
+            timeInfo.classList.add('message-time');
+            timeInfo.innerHTML = `<i class="far fa-clock"></i> ${time}`;
+            senderInfo.appendChild(timeInfo);
+        }
+        card.appendChild(messageText);
+        card.appendChild(senderInfo);
+
+        messageList.appendChild(card);
+    }
+
 </script>

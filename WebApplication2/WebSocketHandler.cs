@@ -14,12 +14,13 @@ namespace WebApplication2
             _connectionManager = connectionManager;
         }
 
-        public async Task HandleWebSocketConnection(HttpContext context, WebSocket socket, bool IsNewCon = false)
+        public async Task HandleWebSocketConnection(HttpContext context, WebSocket socket, bool IsNewCon = false, bool IsRejoin = false, string existingId = "")
         {
             if (IsNewCon)
             {
-                CurrentConnection = _connectionManager.AddSocket(socket);
-                await SendMessageToAllAsync($"user {CurrentConnection} is joined!", true, "");
+                CurrentConnection = _connectionManager.AddSocket(socket, IsRejoin, existingId);
+                if (!IsRejoin)
+                    await SendMessageToAllAsync($"user {CurrentConnection} is joined!", true, "");
             }
 
             try
@@ -32,14 +33,12 @@ namespace WebApplication2
                         var rData = Newtonsoft.Json.JsonConvert.DeserializeObject<MessageDataModel>(message);
                         if (rData != null)
                             CurrentUser.CurrentUserId = rData.CurrenctUserId = _connectionManager.GetId(socket);
-                            await SendMessageToAllAsync($"User {rData.CurrenctUserId}: {rData.Message}", rData.IsAll, rData?.ParticularUser);
+                        string reJoin = rData.IsRejoin ? "Rejoined" : "";
+                        await SendMessageToAllAsync($"User {reJoin} {rData.CurrenctUserId}: {DateTime.Now.ToString("MM/dd/yyyy HH.mm.ss")} : {rData.Message}", rData.IsAll, rData?.ParticularUser);
                     }
                     else if (result.MessageType == WebSocketMessageType.Close)
                     {
                         await OnDisconnected(socket);
-
-                        await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None);
-                        _connectionManager.RemoveSocket(CurrentUser.CurrentUserId);
                     }
                 });
             }
@@ -90,6 +89,7 @@ namespace WebApplication2
         public bool IsAll { get; set; }
         public string? ParticularUser { get; set; }
         public string? CurrenctUserId { get; set; }
+        public bool IsRejoin { get; set; }
     }
 
     public static class CurrentUser

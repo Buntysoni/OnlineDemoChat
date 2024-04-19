@@ -1,18 +1,15 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 public class WebSocketConnectionManager
 {
     private readonly ConcurrentDictionary<string, WebSocket> _sockets = new ConcurrentDictionary<string, WebSocket>();
     private static ConcurrentDictionary<string, string> _users = new ConcurrentDictionary<string, string>();
 
-    public string AddSocket(WebSocket socket)
+    public string AddSocket(WebSocket socket, bool IsRejoin, string existingId)
     {
-        var connectionId = Guid.NewGuid().ToString();
+        var connectionId = !IsRejoin ? Guid.NewGuid().ToString() : existingId;
         _sockets.TryAdd(connectionId, socket);
         _users.TryAdd(connectionId, connectionId);
         return connectionId;
@@ -49,7 +46,7 @@ public class WebSocketConnectionManager
                 {
                     await SendMessageAsync(socket, message);
                 }
-                if (_sockets.TryGetValue(ParticularUser, out WebSocket socketp))
+                if (_sockets.TryGetValue(ParticularUser, out WebSocket socketp) && connectionId != ParticularUser)
                 {
                     await SendMessageAsync(socketp, message);
                 }
