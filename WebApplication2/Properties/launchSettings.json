@@ -8,7 +8,7 @@
     }
   },
   "profiles": {
-    "WebApplication2": {
+    "OnlineChatApp": {
       "commandName": "Project",
       "dotnetRunMessages": true,
       "launchBrowser": true,

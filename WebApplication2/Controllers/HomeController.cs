@@ -1,9 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 using System.Net.WebSockets;
-using WebApplication2.Models;
+using OnlineChatApp.Models;
 
-namespace WebApplication2.Controllers
+namespace OnlineChatApp.Controllers
 {
     public class HomeController : Controller
     {

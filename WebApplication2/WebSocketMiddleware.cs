@@ -1,6 +1,6 @@
 ﻿using System.Net.WebSockets;
 
-namespace WebApplication2
+namespace OnlineChatApp
 {
     public class WebSocketMiddleware
     {

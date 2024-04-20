@@ -1,4 +1,4 @@
-using WebApplication2;
+using OnlineChatApp;
 
 var builder = WebApplication.CreateBuilder(args);
 

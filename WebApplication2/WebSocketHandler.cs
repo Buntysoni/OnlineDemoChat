@@ -2,7 +2,7 @@
 using System.Net.WebSockets;
 using System.Text;
 
-namespace WebApplication2
+namespace OnlineChatApp
 {
     public class WebSocketHandler
     {
@@ -33,8 +33,8 @@ namespace WebApplication2
                         var rData = Newtonsoft.Json.JsonConvert.DeserializeObject<MessageDataModel>(message);
                         if (rData != null)
                             CurrentUser.CurrentUserId = rData.CurrenctUserId = _connectionManager.GetId(socket);
-                        string reJoin = rData.IsRejoin ? "Rejoined" : "";
-                        await SendMessageToAllAsync($"User {reJoin} {rData.CurrenctUserId}: {DateTime.Now.ToString("MM/dd/yyyy HH.mm.ss")} : {rData.Message}", rData.IsAll, rData?.ParticularUser);
+                        string reJoin = rData.IsRejoin ? "Rejoined " : "";
+                        await SendMessageToAllAsync($"User {reJoin}{rData.CurrenctUserId}: {DateTime.Now.ToString("MM/dd/yyyy HH.mm.ss")} : {rData.Message}", rData.IsAll, rData?.ParticularUser);
                     }
                     else if (result.MessageType == WebSocketMessageType.Close)
                     {
